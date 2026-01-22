@@ -4,6 +4,16 @@ class MTNFCTLV {
         this.Value = Value;
     }
 
+    toByteArray() {
+        let result = [Tag];
+        let length = value.length;
+        if (length > 0xFF) {
+
+        } else {
+            result.push(length);
+        }
+    }
+
     static parse(data) {
         let index = 0;
         const result = [];
@@ -32,6 +42,147 @@ class MTNFCTLV {
         }
 
         return result;
+    }
+
+    static makeType2(content){
+        if (content instanceof(MTNdefMessage)) {
+            content = content.toByteArray();
+        }
+
+    }
+}
+
+class MTNdefRecord {
+    constructor(recordType,data,id,mediaType,encoding,lang) {
+
+        if (typeof mediaType === "undefined") {
+            mediaType = null;
+        }
+
+        if (typeof encoding === "undefined") {
+            encoding = null;
+        }
+
+        if (typeof lang === "undefined") {
+            lang = null;
+        }
+
+        /// Returns the record type of the record. Records must have either a standardized well-known type name such as "empty", "text", "url", "smart-poster", "absolute-url", "mime", or "unknown" or else an external type name, which consists of a domain name and custom type name separated by a colon (":").
+        this.recordType = recordType;
+        /// Returns the MIME type of the record. This value will be null if recordType is not equal to "mime".
+        this.mediaType = mediaType;
+        /// Returns the record identifier, which is an absolute or relative URL used to identify the record.
+        this.id = id;
+        /// Returns a DataView containing the raw bytes of the record's payload.
+        this.data = data;
+        /// Returns the encoding of a textual payload, or null otherwise.
+        this.encoding = encoding;
+        /// Returns the language of a textual payload, or null if one was not supplied.
+        this.lang = lang;
+    }
+
+    static fromRecord(record) {
+        let recordType, mediaType, id, data, encoding, lang;
+        if (NdefLibrary.NdefTextRecord.isRecordType(record)) {
+            record = new NdefLibrary.NdefTextRecord(record);
+            let text = record.getText();
+            let object = new MTNdefRecord("text",record.getPayload(), record.getId(),null, record.getTextEncoding() ==  1 ? "utf16" : "utf8", record.getLanguageCode());
+            object.text = text;
+            object._record = record;
+            object.toByteArray = function() { return record.toByteArray(); };
+            return object;
+        } else if (NdefLibrary.NdefUriRecord.isRecordType(record)) {
+            record = new NdefLibrary.NdefUriRecord(record);
+            let url = record.getUri();
+            let object = new MTNdefRecord("url",record.getPayload(), record.getId(),null, null, null);
+            object.url = url;
+            object._record = record;
+            object.toByteArray = function() { return record.toByteArray(); };
+            return object;
+        }
+        return null;
+    } 
+
+    static fromObject(object) {
+        if (typeof object === "string") {
+            if (object.toLowerCase().startsWith("http://") || object.toLowerCase().startsWith("https://") ) {
+                object = {url: object};
+            } else {
+                object = {text: object};
+            }
+        }
+        if (typeof object.text === "string") {
+            let record = new NdefLibrary.NdefTextRecord();
+            record.setText(object.text);
+            let result = new MTNdefRecord("text",record.getPayload(), record.getId(),null, record.getTextEncoding() ==  1 ? "utf16" : "utf8", record.getLanguageCode());
+            result.text = object.text;
+            result._record = record;
+            result.toByteArray = function() { return record.toByteArray(); };
+            return result;
+        } else if (typeof object.url === "string") {
+            let record = new NdefLibrary.NdefUriRecord();
+            record.setUri(object.url);
+            let result = new MTNdefRecord("text",record.getPayload(), record.getId(),null, null, null);
+            result.url = object.url;
+            result._record = record;
+            result.toByteArray = function() { return record.toByteArray(); };
+            return result;
+        }
+        return null;
+    }
+}
+
+///
+class MTNdefMessage {
+    constructor(records) {
+        let message = new NdefLibrary.NdefMessage();
+        if (Array.isArray(records)) {
+            records.forEach(record => {
+                if (record instanceof(MTNdefRecord)) {
+                    message.push(record._record);
+                } else {
+                    message.push(record);
+                }
+            });
+        } else {
+            if (records instanceof(MTNdefRecord)) {
+                message.push(records._record);
+            } else {
+                message.push(records);
+            }
+        }
+
+        this._message = message;
+    }
+
+    get records () {
+        var records = this._message.getRecords();
+        return records.map(x=>MTNdefRecord.fromRecord(x));
+    }
+
+    toByteArray() {
+        return this._message.toByteArray();
+    }
+
+    static fromByteArray(bytes) {
+        let message = NdefLibrary.NdefMessage.fromByteArray(bytes);
+        let records = message.getRecords();
+        return new MTNdefMessage(records);
+    }
+
+    static fromMessage(message) {
+        let records = message.getRecords();
+        return new MTNdefMessage(records);
+    }
+
+    static fromObject(object) {
+        if (object instanceof (MTNdefMessage)) {
+            return object;
+        } else if (Array.isArray(object)) {
+            return new MTNdefMessage(object.map(x=> MTNdefRecord.fromObject( x )));
+        } else {
+            return new MTNdefMessage(MTNdefRecord.fromObject( object));
+        }
     }
 }
 
@@ -97,13 +248,10 @@ class NTag {
 
         let tlvs = MTNFCTLV.parse(all);
         let messages = tlvs.map((tlv)=>NdefLibrary.NDefMessage.fromByteArray(tlv.Value));
+   
+        let mtMessages = messages.map(m=> MTNdefMessage.fromMessage(m));
 
-        let records = [];
-        
-        messages.map(m=> records.concat( m.getRecords()) );
-
-        var ndefMessage = NdefLibrary.NdefMessage.fromByteArray(all);
-        return ndefMessage;
+        return mtMessages.length == 1 ? mtMessages[0] : mtMessages;
     }
 
     async writeAll(data) {

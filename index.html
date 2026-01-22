@@ -197,6 +197,16 @@ http://www.w3.org/1999/xhtml">
                 log(uri.getUri());
             }
         }
+
+        let message1 = MTNdefMessage.fromByteArray(tlvs[0].Value);
+        log(message1.records[0].text);
+
+        let message2 = MTNdefMessage.fromObject(["Hello World","https://www.helloworld.com"]);
+        let message2Bytes = message2.toByteArray();
+
+        let message3 = MTNdefMessage.fromByteArray(message2Bytes);
+        let message3Records = message3.records;
+        log(message3Records[0].text);
     }
     
 </script>
