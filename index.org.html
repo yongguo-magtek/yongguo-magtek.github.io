@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html xmlns="
+http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge"/>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="MTMagneFlexLibJs.js" type="text/javascript"></script>
+<script src="MTNFC.js"></script>
+<script src="ndeflibrary.js"></script>
+<script src="ntag.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" type="text/javascript"></script>
+<title>MagneFlex Sample</title>
+
+<h1>NFC Functions</h1>
+<br />
+<textarea id="testinput" style="width: 100%;" rows="5"></textarea>
+<br />
+<button onclick="testScript();">Test</button>
+<button onclick="startNFCListener();">Start Listen</button>
+<button onclick="stopNFCListener();">Stop Listen</button>
+<button onclick="sendCommand();">Send Command</button>
+<button onclick="startNFCAccess();">Start NFC</button>
+<button onclick="stopNFCAccess();">Stop NFC</button>
+<button onclick="sendNFCCommand();">Send NFC Command (60)</button>
+
+<button onclick="ConnectNFCReader();">NFC Connect</button>
+<button onclick="TestNDEF();">Test NDEF Library</button>
+<br />
+<div>
+    <button onclick="clearLog();">Clear Log</button>
+    <br />
+<textarea id="logarea" style="width: 100%;" rows="20"></textarea>
+</div>
+
+<script lang="javascript">
+    function testScript() {
+        var script = $("#testinput").val();
+        eval(script);
+    };
+
+    function log (x) {
+        logArea = $("#logarea");
+        var newValue = logArea.val() + x + "\n";
+        logArea.val( newValue );
+
+        logArea.scrollTop(logArea[0].scrollHeight);
+        
+        console.log(x + "\n");
+    }
+
+    function clearLog (x) {
+        logArea = $("#logarea");
+        logArea.val( "" );
+    }
+
+    function dumpEvent(e) {
+        log("event : ")
+        log("    " + e.name);
+        log("    " + e.data);
+    }
+
+    function startNFCListener() {
+        //MTMagneFlexLib.addEventListener("UserEvent", dumpEvent, function(x) {log(x);})
+        MTMagneFlexLib.addEventListener("all", dumpEvent, function(x) {log(x);})
+
+        // callback
+        // sucess 
+        //  opType=OPEN_DEVICE_RESULT&errorCode=0&errorMessage=OK&SerialNumber=B545AB5&Model=DynaFlex II Go&Firmware=1000009421-AA5-PCI&passInData=
+        // failed
+        //  opType=OPEN_DEVICE_RESULT&errorCode=2&errorMessage=The operation couldn’t be completed. (MagneFLEX error 2.)&errorDetailMessage=The operation couldn’t be completed. (MagneFLEX error 2.)&passInData=
+    }
+
+    function stopNFCListener() {
+        MTMagneFlexLib.removeEventListener("*", dumpEvent)
+    }
+
+    function startNFCAccess() {
+        readerArgument = new MTMagneFlexParameter.readerParameter();
+        readerArgument.timeLimit = '1E';
+        readerArgument.hideUI = true;
+
+        
+        requestArgument = new MTMagneFlexParameter.requestParameter();
+        requestArgument.operation = MagneFlexOp.REQUEST_START_NFC;
+        requestArgument.httpMethod = HTTPMethod.NONE;
+        requestArgument.closeDeviceAfter = false;
+        requestArgument.destinationURL = "";
+        MTMagneFlexLib.requestStartNFC(readerArgument,requestArgument,function (x){log("startNFC Response : " + x)})
+
+        // callback
+        //   opType=START_NFC_RESULT&errorCode=0&errorMessage=OK&CardType=mifare_ultralight&UID=04B94516B72A81&passInData=
+        // 
+    }
+
+    function stopNFCAccess() {
+        readerArgument = new MTMagneFlexParameter.readerParameter();
+        readerArgument.timeLimit = '1E';
+        readerArgument.hideUI = true;
+
+        
+        requestArgument = new MTMagneFlexParameter.requestParameter();
+        requestArgument.operation = MagneFlexOp.REQUEST_STOP_NFC;
+        requestArgument.httpMethod = HTTPMethod.NONE;
+        requestArgument.closeDeviceAfter = false;
+        requestArgument.destinationURL = "";
+        MTMagneFlexLib.requestStopNFC(readerArgument,requestArgument,function (x){log("stopNFC Response : " + x)})
+
+        // callback
+        //   CloseDeviceComplete:opType=CLOSE_DEVICE_RESULT&errorCode=0&errorMessage=OK&operationStatus=00&passInData=
+
+    }
+
+    function sendCommand() {
+        var command = $("#testinput").val();
+        readerArgument = new MTMagneFlexParameter.readerParameter();
+        readerArgument.timeLimit = '1E';
+        readerArgument.hideUI = true;
+        readerArgument.command = command;
+
+        
+        requestArgument = new MTMagneFlexParameter.requestParameter();
+        requestArgument.operation = MagneFlexOp.REQUEST_SEND_COMMAND;
+        requestArgument.httpMethod = HTTPMethod.NONE;
+        requestArgument.closeDeviceAfter = false;
+        requestArgument.destinationURL = "";
+        MTMagneFlexLib.requestSendCommand(readerArgument,requestArgument,function(x){log("Command Response : " + x);})
+    }
+
+    function sendNFCCommand() {
+        var command = "60";
+        readerArgument = new MTMagneFlexParameter.readerParameter();
+        readerArgument.timeLimit = '1E';
+        readerArgument.hideUI = true;
+        readerArgument.command = command;
+        readerArgument.lastCommand = false;
+        readerArgument.encrypt = false;
+
+        
+        requestArgument = new MTMagneFlexParameter.requestParameter();
+        requestArgument.operation = MagneFlexOp.REQUEST_SEND_NFC_COMMAND;
+        requestArgument.httpMethod = HTTPMethod.NONE;
+        requestArgument.closeDeviceAfter = false;
+        requestArgument.destinationURL = "";
+        MTMagneFlexLib.requestSendNFCCommand(readerArgument,requestArgument,function(x){log("NFC Command Response : " + x);})
+
+        // callback
+        // success
+        // failed 
+        //   opType=SEND_NFC_COMMAND_RESULT&errorCode=2&errorMessage=The operation couldn’t be completed. (MagneFLEX error 2.)&errorDetailMessage=The operation couldn’t be completed. (MagneFLEX error 2.)&passInData=
+    }
+
+    function ConnectNFCReader() {
+        mtnfc.connect( { nfc_mifare_ultralight_presented : (reader, tag)=>{
+            log("UID " + tag.UID);
+            reader.scan()
+                .then((reader)=>{
+                    reader.onreading = (data)=>{
+                        log("nfc read data - " + data);
+                    };
+                });
+            } } 
+        )
+        .catch((e)=>{
+            log("error " + e);
+        });
+    }
+
+    async function sendNfcDummy(command, lastCommand) {
+        console.log(`dummy send(${command},${lastCommand})`);
+        return await mtnfc.send(command, lastCommand)
+    }
+
+    function byteArrayFromHexString(hexString) {
+        const result = [];
+        for (let i = 0; i < hexString.length; i += 2) {
+            result.push(parseInt(hexString.substr(i, 2), 16));
+        }
+        return result;
+    }
+
+    function TestNDEF() {
+        let hex = "032E91010E5402656E54657874205265636F72645101185568747470733A2F2F000000006D616774656B2E636F6D2F00FE00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011223344112233440000000300000000000000040000000500000006000000070000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+        let bytes = byteArrayFromHexString(hex);
+
+        let tlvs = MTNFCTLV.parse(bytes);
+     	
+     	var ndefMessage2 = NdefLibrary.NdefMessage.fromByteArray(tlvs[0].Value);
+        let records = ndefMessage2.getRecords();
+        for (record in records) {
+            let rec = records[record];
+            if (NdefLibrary.NdefTextRecord.isRecordType(rec)) {
+                let text = new NdefLibrary.NdefTextRecord(rec);
+                log(text.getText());
+            }
+            if (NdefLibrary.NdefUriRecord.isRecordType(rec)) {
+                let uri = new NdefLibrary.NdefUriRecord(rec);
+                log(uri.getUri());
+            }
+        }
+
+        let message1 = MTNdefMessage.fromByteArray(tlvs[0].Value);
+        log(message1.records[0].text);
+
+        let message2 = MTNdefMessage.fromObject(["Hello World","https://www.helloworld.com"]);
+        let message2Bytes = message2.toByteArray();
+
+        let message3 = MTNdefMessage.fromByteArray(message2Bytes);
+        let message3Records = message3.records;
+        log(message3Records[0].text);
+    }
+    
+</script>
+
+</html>
